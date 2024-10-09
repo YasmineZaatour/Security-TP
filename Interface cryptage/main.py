@@ -28,4 +28,31 @@ def login_user (username, password):
     conn.close()
     return user is not None
 
-    
+# Streamlit app
+st.title("User Authentication")
+
+menu = ["Login", "Register"]
+choice = st.sidebar.selectbox("Select an option", menu)
+
+if choice == "Register":
+    st.subheader("Create an Account")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+    if st.button("Register"):
+        if username and password:
+            register_user(username, password)
+        else:
+            st.error("Please out all the fields !")
+
+elif choice == "Login":
+    st.subheader("Log In to your Account")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+    if st.button("Login"):
+        if login_user(username, password):
+            st.success(f"Welcome back {username} !")
+            #run cypher function here
+        else: 
+            st.error("Invalid username or password !")
+            
+
