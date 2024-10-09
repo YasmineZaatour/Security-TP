@@ -18,3 +18,14 @@ def register_user (username, password):
         st.error("Username already exists")
     finally:
         conn.close()
+
+#Login a user
+def login_user (username, password):
+    conn = db_connection()
+    c = conn.cursor()
+    c.execute(''' SELECT * FROM users WHERE username = ? AND password = ? ''', (username, password))
+    user = c.fetchone()
+    conn.close()
+    return user is not None
+
+    
