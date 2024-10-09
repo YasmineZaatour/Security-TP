@@ -8,15 +8,16 @@ def db_connection():
     return conn 
 
 # Register a new user 
-def register_user(username, password):
+def register_user(email, username, password):
     conn = db_connection()
     c = conn.cursor()
     try:
-        c.execute(''' INSERT INTO users (username, password) VALUES (?, ?) ''', (username, password))
+        c.execute(''' INSERT INTO users (email, username, password) VALUES (?, ?, ?) ''', (email, username, password))
         conn.commit()
-        st.success("User registered successfully")
+        st.success("User registered successfully!")
+        st.session_state.choice = 'Login'
     except sqlite3.IntegrityError:
-        st.error("Username already exists")
+        st.error("Email or username already exists!")
     finally:
         conn.close()
 
@@ -29,32 +30,36 @@ def login_user(username, password):
     conn.close()
     return user is not None
 
-# Streamlit app state initialization
+# Initialize session state for logged in status and page choice
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
-if 'username' not in st.session_state:
-    st.session_state.username = ""
+if 'choice' not in st.session_state:
+    st.session_state.choice = "Login"
 
-if not st.session_state.logged_in:  
+# Only show the title if the user is not logged in
+if not st.session_state.logged_in:
     st.title("User Authentication")
 
+# Sidebar menu
 menu = ["Login", "Register"]
-choice = st.sidebar.selectbox("Select an option", menu)
+choice = st.sidebar.selectbox("Select an option", menu, index=menu.index(st.session_state.choice))
 
 if choice == "Register" and not st.session_state.logged_in:
     st.subheader("Create an Account")
+    email = st.text_input("Email")
     username = st.text_input("Username")
     password = st.text_input("Password", type="password")
     if st.button("Register"):
-        if username and password:
-            register_user(username, password)
+        if email and username and password:
+            register_user(email, username, password)
+            # No need for experimental_rerun
         else:
-            st.error("Please fill out all the fields!")
+            st.error("Please fill out all fields!")
 
 elif choice == "Login":
     if st.session_state.logged_in:
         st.success(f"Welcome back {st.session_state.username}!")
-        cypher_app() 
+        cypher_app()  # Show the cryptography app
     else:
         st.subheader("Log In to your Account")
         username = st.text_input("Username")
@@ -64,6 +69,5 @@ elif choice == "Login":
                 st.session_state.logged_in = True
                 st.session_state.username = username
                 st.success(f"Welcome back, {username}!")
-                st.rerun() 
-            else: 
+            else:
                 st.error("Invalid username or password!")
