@@ -1,5 +1,7 @@
 import streamlit as st
 import sqlite3
+import smtplib
+import random
 from app import cypher_app
 
 # Create a connection with users database
@@ -21,20 +23,38 @@ def register_user(email, username, password):
     finally:
         conn.close()
 
-# Login a user
-def login_user(username, password):
+# Login a user using email
+def login_user(email, password):
     conn = db_connection()
     c = conn.cursor()
-    c.execute(''' SELECT * FROM users WHERE username = ? AND password = ? ''', (username, password))
+    c.execute(''' SELECT * FROM users WHERE email = ? AND password = ? ''', (email, password))
     user = c.fetchone()
     conn.close()
-    return user is not None
+    return user
+
+# Function to send verification code
+def send_verification_code(email):
+    code = random.randint(100000, 999999)  # Generate a random 6-digit code
+    try:
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+            server.starttls()  # Upgrade the connection to a secure encrypted SSL/TLS connection
+            server.login("your_email@gmail.com", "your_password")  # Replace with your email credentials
+            message = f"Subject: Verification Code\n\nYour verification code is: {code}"
+            server.sendmail("your_email@gmail.com", email, message)  # Send the email
+        return code  # Return the generated verification code
+    except Exception as e:
+        st.error(f"Failed to send email: {str(e)}")  # Display error in Streamlit
+        return None  # Return None if the email sending fails
 
 # Initialize session state for logged in status and page choice
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 if 'choice' not in st.session_state:
     st.session_state.choice = "Login"
+if 'verification_code' not in st.session_state:
+    st.session_state.verification_code = None
+if 'email' not in st.session_state:
+    st.session_state.email = None
 
 # Only show the title if the user is not logged in
 if not st.session_state.logged_in:
@@ -52,22 +72,37 @@ if choice == "Register" and not st.session_state.logged_in:
     if st.button("Register"):
         if email and username and password:
             register_user(email, username, password)
-            # No need for experimental_rerun
         else:
             st.error("Please fill out all fields!")
 
 elif choice == "Login":
     if st.session_state.logged_in:
-        st.success(f"Welcome back {st.session_state.username}!")
+        st.success(f"Welcome back !")
         cypher_app()  # Show the cryptography app
     else:
         st.subheader("Log In to your Account")
-        username = st.text_input("Username")
+        email = st.text_input("Email")  # Change to input email
         password = st.text_input("Password", type="password")
         if st.button("Login"):
-            if login_user(username, password):
-                st.session_state.logged_in = True
-                st.session_state.username = username
-                st.success(f"Welcome back, {username}!")
+            user = login_user(email, password)  # Use email for login
+            if user:
+                st.session_state.email = user[0]  # Assuming email is the first column
+                st.session_state.verification_code = send_verification_code(st.session_state.email)  # Send verification code
+                if st.session_state.verification_code:
+                    st.success("Verification code sent to your email. Please check your inbox.")
+                else:
+                    st.error("Failed to send verification code.")
             else:
-                st.error("Invalid username or password!")
+                st.error("Invalid email or password!")  # Update the error message
+            
+        # MFA verification
+        if st.session_state.verification_code is not None:
+            mfa_code = st.text_input("Enter the verification code sent to your email")
+            if st.button("Verify Code"):
+                if mfa_code and int(mfa_code) == st.session_state.verification_code:
+                    st.success("MFA verification successful!")
+                    st.session_state.logged_in = True
+                    st.session_state.username = user[1]  # Assuming username is the second column
+                    cypher_app()  # Show the cryptography app after successful verification
+                else:
+                    st.error("Invalid verification code!")
