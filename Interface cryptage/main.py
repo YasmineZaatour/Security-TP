@@ -1,6 +1,6 @@
+# Import necessary libraries
 import streamlit as st
 import sqlite3
-import smtplib
 import random
 import re
 from app import cypher_app
@@ -33,19 +33,11 @@ def login_user(email, password):
     conn.close()
     return user
 
-# Function to send verification code
-def send_verification_code(email):
-    code = random.randint(100000, 999999)  # Generate a random 6-digit code
-    try:
-        with smtplib.SMTP('smtp.gmail.com', 587) as server:
-            server.starttls()  # Upgrade the connection to a secure encrypted SSL/TLS connection
-            server.login("your_email@gmail.com", "your_app_password")  # Replace with your email credentials
-            message = f"Subject: Verification Code\n\nYour verification code is: {code}"
-            server.sendmail("your_email@gmail.com", email, message)  # Send the email
-        return code  # Return the generated verification code
-    except Exception as e:
-        st.error(f"Failed to send email: {str(e)}")  # Display error in Streamlit
-        return None  # Return None if the email sending fails
+# Function to send verification code to terminal
+def send_verification_code():
+    code = random.randint(100000, 999999)  
+    print(f"Your verification code is: {code}")  
+    return code  
 
 # Initialize session state for logged in status and page choice
 if 'logged_in' not in st.session_state:
@@ -56,11 +48,13 @@ if 'verification_code' not in st.session_state:
     st.session_state.verification_code = None
 if 'email' not in st.session_state:
     st.session_state.email = None
+if 'username' not in st.session_state:  
+    st.session_state.username = None
 
 # Validation Patterns
 EMAIL_PATTERN = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-USERNAME_PATTERN = r'^[a-zA-Z0-9]{3,15}$'  # Alphanumeric, 3-15 characters
-PASSWORD_PATTERN = r'^(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,}$'  # At least 8 characters, one uppercase, one digit
+USERNAME_PATTERN = r'^[a-zA-Z0-9]{3,15}$'  
+PASSWORD_PATTERN = r'^(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,}$'  
 
 # Function to validate user input
 def validate_input(email, username, password):
@@ -93,13 +87,13 @@ if choice == "Register" and not st.session_state.logged_in:
         if email and username and password:
             if validate_input(email, username, password):
                 register_user(email, username, password)
+                st.session_state.username = username  
         else:
             st.error("Please fill out all fields!")
-
 elif choice == "Login":
     if st.session_state.logged_in:
-        st.success(f"Welcome back !")
-        cypher_app()  # Show the cryptography app
+        st.success(f"Welcome back, {st.session_state.username}!")  
+        cypher_app()  
     else:
         st.subheader("Log In to your Account")
         email = st.text_input("Email")
@@ -108,23 +102,20 @@ elif choice == "Login":
         if st.button("Login"):
             user = login_user(email, password)
             if user:
-                st.session_state.email = user[0]  # Assuming email is the first column
-                st.session_state.verification_code = send_verification_code(st.session_state.email)  # Send verification code
-                if st.session_state.verification_code:
-                    st.success("Verification code sent to your email. Please check your inbox.")
-                else:
-                    st.error("Failed to send verification code.")
+                st.session_state.email = user[0]  
+                st.session_state.username = user[1]  
+                st.session_state.verification_code = send_verification_code()  
+                st.success("Verification code printed to terminal. Please check your terminal.")
             else:
                 st.error("Invalid email or password!")
         
         # MFA verification
         if st.session_state.verification_code is not None:
-            mfa_code = st.text_input("Enter the verification code sent to your email")
+            mfa_code = st.text_input("Enter the verification code sent to your terminal")
             if st.button("Verify Code"):
                 if mfa_code and int(mfa_code) == st.session_state.verification_code:
                     st.success("MFA verification successful!")
                     st.session_state.logged_in = True
-                    st.session_state.username = username
-                    cypher_app()  # Show the cryptography app after successful verification
+                    cypher_app() 
                 else:
                     st.error("Invalid verification code!")
