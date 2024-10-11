@@ -11,14 +11,16 @@ def db_connection():
     return conn 
 
 # Register a new user 
-def register_user(email, username, password):
+def register_user(email, username, password, role='user'):
     conn = db_connection()
     c = conn.cursor()
     try:
-        c.execute(''' INSERT INTO users (email, username, password) VALUES (?, ?, ?) ''', (email, username, password))
+        c.execute('''
+            INSERT INTO users (email, username, password, role) 
+            VALUES (?, ?, ?, ?)
+        ''', (email, username, password, role))
         conn.commit()
         st.success("User registered successfully!")
-        st.session_state.choice = 'Login'
     except sqlite3.IntegrityError:
         st.error("Email or username already exists!")
     finally:
@@ -82,11 +84,12 @@ if choice == "Register" and not st.session_state.logged_in:
     email = st.text_input("Email")
     username = st.text_input("Username")
     password = st.text_input("Password", type="password")
-    
+    role = st.selectbox("Select Role", ["user", "admin"])
+
     if st.button("Register"):
         if email and username and password:
             if validate_input(email, username, password):
-                register_user(email, username, password)
+                register_user(email, username, password,role)
                 st.session_state.username = username  
         else:
             st.error("Please fill out all fields!")
@@ -103,7 +106,8 @@ elif choice == "Login":
             user = login_user(email, password)
             if user:
                 st.session_state.email = user[0]  
-                st.session_state.username = user[1]  
+                st.session_state.username = user[1] 
+                st.session_state.role = user[3] 
                 st.session_state.verification_code = send_verification_code()  
                 st.success("Verification code printed to terminal. Please check your terminal.")
             else:
