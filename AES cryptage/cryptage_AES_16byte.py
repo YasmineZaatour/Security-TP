@@ -3,7 +3,7 @@ from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.backends import default_backend
 import os
 
-AES_KEY = os.urandom(16) 
+AES_KEY = os.urandom(16)  
 
 def encrypt_password(plain_text_password):
     backend = default_backend()
